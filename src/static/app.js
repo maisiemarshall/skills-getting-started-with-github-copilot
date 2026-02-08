@@ -19,12 +19,26 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
+        const participantsHtml = details.participants.length > 0
+          ? details.participants.map(p => `
+              <div class="participant-item">
+                <span class="participant-name">${p}</span>
+                <button class="delete-btn" data-activity="${name}" data-email="${p}" title="Remove participant">✕</button>
+              </div>
+            `).join("")
+          : "<em>No participants yet</em>";
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Current Participants:</strong>
+            <div class="participants-list">
+              ${participantsHtml}
+            </div>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -35,9 +49,43 @@ document.addEventListener("DOMContentLoaded", () => {
         option.textContent = name;
         activitySelect.appendChild(option);
       });
+
+      // Add event listeners to delete buttons
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", handleDeleteParticipant);
+      });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
+    }
+  }
+
+  // Handle participant deletion
+  async function handleDeleteParticipant(event) {
+    event.preventDefault();
+
+    const button = event.target;
+    const activity = button.getAttribute("data-activity");
+    const email = button.getAttribute("data-email");
+
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/participants/${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Refresh activities list
+        fetchActivities();
+      } else {
+        console.error("Error removing participant:", result.detail);
+      }
+    } catch (error) {
+      console.error("Error removing participant:", error);
     }
   }
 
